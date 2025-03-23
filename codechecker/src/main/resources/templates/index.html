@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Code Checker</title>
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:400,500,700">
+    <style>
+        /* Reset */
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        body {
+          font-family: 'Inter', sans-serif;
+          background: #f5f5f5;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        /* Container with a wide layout */
+        .container {
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          width: 100%;
+          max-width: 1200px;
+          padding: 40px;
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+        }
+        h1 {
+          font-size: 2.5rem;
+          font-weight: 700;
+          text-align: center;
+          color: #111;
+        }
+        form {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+          width: 100%;
+        }
+        textarea {
+          width: 100%;
+          height: 200px;
+          padding: 20px;
+          font-size: 1rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          resize: vertical;
+          outline: none;
+          font-family: 'Inter', sans-serif;
+          background: #fafafa;
+        }
+        textarea:focus {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
+        }
+        .btn {
+          padding: 15px 25px;
+          border: none;
+          border-radius: 8px;
+          font-size: 1.1rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.3s ease;
+        }
+        .btn-check {
+          background-color: #6366f1;
+          color: #fff;
+        }
+        .btn-check:hover {
+          background-color: #4f46e5;
+        }
+        .btn-live {
+          background-color: #10b981;
+          color: #fff;
+        }
+        .btn-live:hover {
+          background-color: #059669;
+        }
+        .result, .live-result {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 20px;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+          font-family: monospace;
+          font-size: 0.95rem;
+          white-space: pre-wrap;
+          max-height: 300px;
+          overflow-y: auto;
+        }
+        .result h2, .live-result h2 {
+          font-size: 1.2rem;
+          font-weight: 600;
+          margin-bottom: 10px;
+          color: #111;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>AI Code Checker</h1>
+
+    <!-- One-shot Analysis Form -->
+    <form th:action="@{/check}" method="post">
+        <textarea name="code" placeholder="Paste your code here..." th:text="${code}"></textarea>
+        <button type="submit" class="btn btn-check">Check Code</button>
+    </form>
+
+    <!-- One-shot Analysis Result -->
+    <div class="result" th:if="${result}">
+        <h2>Result:</h2>
+        <p th:text="${result}"></p>
+    </div>
+
+    <!-- Live Analysis Area -->
+    <div class="live-result">
+        <h2>Live Analysis:</h2>
+        <div id="liveAnalysisOutput" style="margin-bottom: 10px;"></div>
+        <button id="startLiveAnalysis" class="btn btn-live">Start Live Analysis</button>
+    </div>
+</div>
+
+<script>
+    const startButton = document.getElementById('startLiveAnalysis');
+    const liveOutput = document.getElementById('liveAnalysisOutput');
+    let eventSource = null;
+
+    startButton.addEventListener('click', function() {
+      const code = document.querySelector('textarea').value.trim();
+      if (!code) {
+        alert('Please enter some code to analyze!');
+        return;
+      }
+      if (eventSource) {
+        eventSource.close();
+      }
+      const encodedCode = encodeURIComponent(code);
+      eventSource = new EventSource('/stream?code=' + encodedCode);
+      liveOutput.innerHTML = "";
+      eventSource.addEventListener('line', function(event) {
+        liveOutput.innerHTML += "✓ " + event.data + "<br>";
+      });
+      eventSource.addEventListener('error', function(event) {
+        liveOutput.innerHTML += "<span style='color: #ff6b6b;'>⚠ " + event.data + "</span><br>";
+      });
+      eventSource.addEventListener('fix', function(event) {
+        liveOutput.innerHTML += "<span style='color: #ffde59;'>➜ Fix: " + event.data + "</span><br>";
+      });
+      eventSource.addEventListener('complete', function(event) {
+        liveOutput.innerHTML += "<span style='color: #9cff9c;'>★ " + event.data + "</span><br>";
+        eventSource.close();
+      });
+      eventSource.onerror = function() {
+        liveOutput.innerHTML += "<span style='color: #ff6b6b;'>Unexpected error or connection closed.</span><br>";
+        eventSource.close();
+      };
+    });
+</script>
+</body>
+</html>
